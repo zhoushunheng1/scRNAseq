@@ -42,7 +42,6 @@ write.table(as.matrix(GetAssayData(object = Stroke.data, slot = "counts")),
             sep = ',', row.names = T, col.names = T, quote = F)
 ######################################################################################
 ######################################################################################
-############## remotes::install_github('chris-mcginnis-ucsf/DoubletFinder') ##安装doubletfinder
 Sham.data <- Read10X(data.dir = "./Sham/")
 Sham.data <- CreateSeuratObject(counts = Sham.data, project = "Sham", min.cells = 3) 
 load_number<-dim(Sham.data)
