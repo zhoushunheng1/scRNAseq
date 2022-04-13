@@ -42,15 +42,10 @@ Stroke <- Stroke %>%
 	RunTSNE( dims = 1:20) %>% 
 	FindNeighbors( dims = 1:20) %>% 
 	FindClusters(resolution = resolution) %>%   identity()
-###################################################################################
-################################################################
-##########################################################
 # find all markers of clusters###
 Stroke.markers <- FindAllMarkers(Stroke,  min.pct = 0.25, logfc.threshold = 0.25)
 
 top20markers <- Stroke.markers %>% group_by(cluster) %>% top_n(n = 20, wt = avg_logFC)  
-write.table(top20markers,"6_top20_markers.resolution2.txt",sep="\t",quote=F)
-save(Stroke,file="Stroke.resolution2.rds")
 #########################remove cluster and reclustering ############################
 
 Stroke$previous<-Stroke$RNA_snn_res.2
@@ -66,8 +61,103 @@ Stroke <- Stroke %>%
 save(Stroke,file="Stroke.recluster.rds")
 Stroke.markers <- FindAllMarkers(Stroke, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 top20_markers<-Stroke.markers %>% group_by(cluster) %>% top_n(n = 20, wt = avg_logFC)  ##top 1 of each cluster 
-
+##rename each cluster based on marker genes#
 new.cluster.ids <-c("Microglia","BAMs","Microglia","Microglia","Microglia","Microglia","Astrocytes","Astrocytes","Monocytes","Astrocytes","Oligodendrocytes","Microglia","DCs","Microglia","Granulocytes","Astrocytes","OPCs","NK&T cells","OPCs","Endothelial cells","Astrocytes","Endothelial cells","Fibroblast-like cells","Astrocytes","Oligodendrocytes","Endothelial cells","DCs","Mural cells","Mural cells","OPCs","Mural cells","Mural cells","Oligodendrocytes","Endothelial cells","Microglia","NK&T cells")
 names(new.cluster.ids) <- levels(Stroke)
 Stroke <- RenameIdents(Stroke, new.cluster.ids) #
-save(Stroke,file="Stroke.rename.rds") ## 
+save(Stroke,file="Stroke.rename.rds") ##
+################Figure 3A ######################################################################################
+cols<-c("#FED023","#CE5227","#5492CD","#E12F8B","#833C64","#23936A","#FF7F05","#CD9201","#33BEB6","#4B4E4F","#5B5FAA","#9D73B0","#999999")
+x<-as.data.frame(Stroke@reductions$tsne@cell.embeddings)
+x$orig.ident<-rownames(x) 
+cell.type<-Idents(Stroke)
+cell.type<-as.data.frame(cell.type)
+cell.type$orig.ident<-rownames(cell.type)  
+c<-merge(x,cell.type,by='orig.ident')
+c$cell.type<- factor(c$cell.type,  
+                             levels=c("Microglia","BAMs","Astrocytes","OPCs","Oligodendrocytes","Monocytes","DCs","Granulocytes","NK&T cells","Endothelial cells","Mural cells","Fibroblast-like cells"))
+
+xlim<-c(min(c$tSNE_1)-3,max(c$tSNE_1)+2)
+ylim<-c(min(c$tSNE_2)-2,max(c$tSNE_2)+2)
+bwidth = .05*c(sum(abs(range(c$tSNE_1))),sum(abs(range(c$tSNE_2))))
+
+stat_density <- ggplot(c,aes(tSNE_1,tSNE_2,colour=cell.type)) + xlim(xlim)+ ylim(ylim)+
+	stat_density_2d(size = 0.25, colour = "#B5BABE",h=bwidth ,contour_var = "ndensity") 
+	
+gg =stat_density+geom_point(data = c, aes(x = tSNE_1, y = tSNE_2),size=0.4,stroke=0.8) +  ##node size, stroke size ##
+	scale_color_manual(values=cols)+
+	       
+	guides(fill=guide_legend(title=NULL),legend.position=c(max(c$tSNE_1)+2,mean(ylim)),legend.justification = c(0, 1))+
+	guides(colour = guide_legend(override.aes = list(size=2)))+ 
+	theme(legend.text=element_text(size=8),legend.title=element_blank())+
+	 theme_classic()	
+
+ggsave(gg,file="Figure3A-tSNE1.pdf",width=7.5,height=6)
+#################
+Stroke_Stroke<- subset(Stroke, stim == "Stroke")  ##
+x<-as.data.frame(Stroke_Stroke@reductions$tsne@cell.embeddings)
+x$orig.ident<-rownames(x) 
+cell.type<-Idents(Stroke_Stroke)
+cell.type<-as.data.frame(cell.type)
+
+cell.type$orig.ident<-rownames(cell.type)  
+
+c<-merge(x,cell.type,by='orig.ident')
+c$cell.type<- factor(c$cell.type,  
+                             levels=c("Microglia","BAMs","Astrocytes","OPCs","Oligodendrocytes","Monocytes","DCs","Granulocytes","NK&T cells","Endothelial cells","Mural cells","Fibroblast-like cells"))
+
+bwidth = .05*c(sum(abs(range(c$tSNE_1))),sum(abs(range(c$tSNE_2))))
+##
+gg =stat_density+geom_point(data = c, aes(x = tSNE_1, y = tSNE_2),size=0.4,stroke=0.8) +  ##node size, stroke size ##
+	scale_color_manual(values=cols)+
+	       
+	guides(fill=guide_legend(title=NULL),legend.position=c(max(c$tSNE_1)+2,mean(ylim)),legend.justification = c(0, 1))+
+	guides(colour = guide_legend(override.aes = list(size=2)))+ 
+	theme(legend.text=element_text(size=8),legend.title=element_blank())+
+	 theme_classic()	
+	
+ggsave(gg,file="Figure3A-PT_tSNE.pdf",width=7.5,height=6)
+###############
+Stroke_Sham<- subset(Stroke, stim == "Sham")  ##
+x<-as.data.frame(Stroke_Sham@reductions$tsne@cell.embeddings)
+x$orig.ident<-rownames(x) 
+cell.type<-Idents(Stroke_Sham)
+cell.type<-as.data.frame(cell.type)
+
+cell.type$orig.ident<-rownames(cell.type)  
+
+c<-merge(x,cell.type,by='orig.ident')
+c$cell.type<- factor(c$cell.type,     #######sham  remove                                                           Granulocytes######
+                             levels=c("Microglia","BAMs","Astrocytes","OPCs","Oligodendrocytes","Monocytes","DCs","Granulocytes","NK&T cells","Endothelial cells","Mural cells","Fibroblast-like cells"))
+cols<-                              c("#FED023",         "#5492CD", "#E12F8B", "#833C64",       "#23936A","#FF7F05",             "#33BEB6",   "#4B4E4F",          "#5B5FAA",    "#9D73B0")
+bwidth = .05*c(sum(abs(range(c$tSNE_1))),sum(abs(range(c$tSNE_2))))
+##
+gg =stat_density+geom_point(data = c, aes(x = tSNE_1, y = tSNE_2),size=0.4,stroke=0.8) +  ##node size, stroke size ##
+	scale_color_manual(values=cols)+
+	       
+	guides(fill=guide_legend(title=NULL),legend.position=c(max(c$tSNE_1)+2,mean(ylim)),legend.justification = c(0, 1))+
+	guides(colour = guide_legend(override.aes = list(size=2)))+ 
+	theme(legend.text=element_text(size=8),legend.title=element_blank())+
+	 theme_classic()
+ggsave(gg,file="Figure3A-Sham_tSNE.pdf",width=7.5,height=6)
+############
+cell_order<-c("Microglia","BAMs","Astrocytes","OPCs","Oligodendrocytes","Monocytes","DCs","Granulocytes","NK&T cells","Endothelial cells","Mural cells","Fibroblast-like cells")
+
+Stroke@active.ident <- factor(Stroke@active.ident, 
+                            levels=cell_order)
+Num<-table(Idents(Stroke),Stroke$stim)
+Group <- c(rep("Stroke" , length(cell_order)) , rep("Sham" ,  length(cell_order))  )
+cell.type <- c(cell_order,cell_order)
+percent <- c(Num[,2],Num[,1])
+data <- data.frame(Group,cell.type ,percent)
+data$cell.type <- factor(data$cell.type,levels =cell_order)
+# Stacked + percent
+cols<-c("#FED023","#CE5227","#5492CD","#E12F8B","#833C64","#23936A","#FF7F05","#CD9201","#33BEB6","#4B4E4F","#5B5FAA","#9D73B0","#999999")
+gg<-ggplot(data, aes(fill=cell.type, y=percent, x=Group)) + 
+    scale_fill_manual(values=cols)+
+	geom_bar( position="fill",stat="identity",width = 0.7)+
+	theme_classic()
+		
+ggsave(gg,file="Figure3A_proportion.pdf")	
+#################################################################
+
